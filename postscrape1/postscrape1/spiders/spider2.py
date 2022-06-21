@@ -1,16 +1,35 @@
-from concurrent.futures import process
-from urllib.request import Request
+
 import scrapy
 from scrapy_splash import SplashRequest
 import re
 from scrapy.crawler import CrawlerProcess
 import asyncio
+import urllib.request
 
 
-
-web_scrape_urls = ["https://topi.vn/co-phieu-la-gi.html"]
+query_keyword = "dau+tu"
+web_scrape_urls = []  #append urls to here lmao
 w_dct_single = {}
 w_dict_double = {}
+
+
+def parse_google_res_html(html_text):
+
+
+    print ("wtfff")
+    print ("parse_goolge_res")
+    
+    url_arr1 = []
+    for linelol in html_text:
+        regexxx = re.findall(r"href=\"(.*?)\"><h3?", linelol)
+
+        for line in regexxx:   
+            regex111 = re.findall(r"q=(.*?)&amp?", line)[0]
+            if regex111[:4] == "http":
+                url_arr1.append(regex111)
+    print ("url_arr1: ", url_arr1[:6])
+    return url_arr1
+
 
 def add_to_dct(word, dct):
     if word in dct:
@@ -28,6 +47,13 @@ def parse_text_1(text):
             re_res.append(reslol)
 
     return re_res #[string]
+
+def handle_url_arr(url_arr):
+    web_scrape_urls.extend(url_arr)
+    
+
+
+
 
 def replace_xa0_text_arr(text_arr):
     res = []
@@ -67,65 +93,21 @@ def parse_res_dict(w_dct):
         tuple_arr.append((w,w_dct[w]))
     return sorted(tuple_arr, key=lambda x:x[1], reverse=True)
 
-async def wait_and_output_result():
-    print ("wait_and_output_resul called")
-    await asyncio.sleep(7)
+def output_result():
+    # print ("wait_and_output_resul called")
+    
     single_res = parse_res_dict(w_dct_single)
     double_res = parse_res_dict(w_dict_double)
     print ("result is here boi")
     print (" ")
     print (" single words: ")
-    print (single_res[:50])
+    print (single_res[100:150])
     print ("")
     print ("double words: ")
-    print (double_res[:50])
+    print (double_res[:300])
     print ("")
 
 
-class SpiderNumberTwo(scrapy.Spider):
-    name = "spider2"
-
-    query_keyword = "co_phieu"
-    start_urls = [
-
-        "https://www.google.com/search?q=%s&num=100" %(query_keyword),
-        # "https://www.google.com/search?q=%s&num=100&start=100" %(query_keyword),
-        
-    ]
-    
-    
-
-    def parse(self,response):
-        
-        url_arr = []
-
-        # resultz = re.findall(r'h3>(.*?)</h3',h3lol)
-        
-        
-
-        text_arr_1 = response.css('a').getall()
-        for textlol in text_arr_1:
-            
-            res_arr = re.findall(r"href=\"(.*)/3\" ", textlol)
-            url_arr.extend(res_arr)
-
-
-
-        print ("")
-        print ("   == begin of data ==")
-        print ("")
-        # print ("response body:", res[:30])
-
-        for url in url_arr[:3]:
-            print (url)
-            
-        print ("")
-        print("")
-        print ("     == end of data ==  ")
-
-
-        
-        return []
 
 
 class SpiderScraperThree(scrapy.Spider):
@@ -157,51 +139,74 @@ class SpiderScraperThree(scrapy.Spider):
         handle_data(h1_arr)
         handle_data(h3_arr)
         handle_data(h4_arr)
+        
 
 
         
         return []
 
 
-# process = CrawlerProcess()
-# process.crawl(SpiderNumberTwo)
-# process.start()
-
-# print ("Wtff")
 
 
-html_text = "wtf"
-with open('sample.txt') as f:
-    html_text = f.readlines()
-    f.close()
-# print ("text is: ", html_text[:5])
+#begin of action
+
+#step1: open and parse google result html
+# html_text = "wtf"
+# with open('sample.txt') as f:
+#     html_text = f.readlines()
+#     f.close()
 
 
-url_arr = []
-
-
-
-for linelol in html_text:
-    regexxx = re.findall(r"href=\"(.*?)\"><h3?", linelol)
+def execute_step1():
+    url_arr = []
     
-    for line in regexxx:   
-        regex111 = re.findall(r"q=(.*?)&amp?", line)[0]
-        
-        if regex111[:4] == "http":
-            
-            url_arr.append(regex111)
+    urls = [
+        "https://www.google.com/search?q=%s&num=100" %(query_keyword),
+        "https://www.google.com/search?q=%s&num=100&start=100" %(query_keyword)
+    ]
+    
+    for url in urls:
+        # Perform the request
+        request = urllib.request.Request(url)
 
-cnt = 0
+        # Set a normal User Agent header, otherwise Google will block the request.
+        request.add_header('User-Agent', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36')
+        raw_response = urllib.request.urlopen(request).read()
 
-
-
-web_scrape_urls = url_arr
-print ("web_scrape_urls", len(web_scrape_urls))
-
-process = CrawlerProcess()
-process.crawl( SpiderScraperThree )
-process.start()
-
-asyncio.run( wait_and_output_result() )
+        # Read the repsonse as a utf-8 string
+        html = raw_response.decode("utf-8")
 
 
+
+        cnt = 0
+        regexxx = re.findall(r"href=\"(.*?)\"", html)
+
+        for line in regexxx:   
+            if line[:4]=="http":
+                # print ("line length [:4]==http is: ", len(line) )
+                # print (line)
+                url_arr.append(line)
+
+        web_scrape_urls.extend(url_arr)
+    
+    
+
+
+def execute_step2():
+    #crawl the google search result urls received in step 1
+    print ("execute_step_2")
+
+    process = CrawlerProcess()
+    process.crawl( SpiderScraperThree )
+    process.start()
+
+    
+async def main():
+    execute_step1()
+    await asyncio.sleep(2)
+    # print ("webscrape urls: ", web_scrape_urls[:1])
+    execute_step2()
+    # await asyncio.sleep(5)
+    output_result()
+
+asyncio.run(main())
