@@ -10,8 +10,7 @@ import datetime
 
 def parse_google_res_html(html_text):
 
-    print ("wtfff")
-    print ("parse_goolge_res")
+    
     
     url_arr1 = []
     for linelol in html_text:
@@ -20,13 +19,15 @@ def parse_google_res_html(html_text):
             regex111 = re.findall(r"q=(.*?)&amp?", line)[0]
             if regex111[:4] == "http":
                 url_arr1.append(regex111)
-    print ("url_arr1: ", url_arr1[:6])
+   
     return url_arr1
+
 def add_to_dct(word, dct):
     if word in dct:
         dct[word] += 1
     else:
         dct[word] = 1
+
 def parse_text_1(text):
     re_res = [] #[string]
     
@@ -43,7 +44,7 @@ class SpiderScraperThree(scrapy.Spider):
 
     name = "spiderThree"
     custom_settings = {
-        "CONCURRENT_REQUESTS":200,
+        "CONCURRENT_REQUESTS":500,
         "RETRY_ENABLED":False
     }
     def parse_lmao():
@@ -87,6 +88,13 @@ class GoogleCrawlerPro():
     w_dict_triple = {}
     w_dict_quadle = {}
 
+    def reset_data(self):
+        self.web_scrape_urls = []  
+        self.w_dct_single = {}
+        self.w_dict_double = {}
+        self.w_dict_triple = {}
+        self.w_dict_quadle = {}
+
     def handle_data(self, text_arr):
     
         #text_arr = [string]
@@ -94,19 +102,35 @@ class GoogleCrawlerPro():
         for text5 in text_arr:
             parse_res = parse_text_1(text5) #[tring]
             reslmao = replace_xa0_text_arr(parse_res) #[string]
-            if len(reslmao) > 0:
-                re_res.extend(reslmao)
-        
-        # print ("re res handle data: ", len(re_res) )
+            reslol = []
+            for s in reslmao:
+                reslol.extend(s.split(" "))
+            # print ("")
+            # print ("reslmao start: ")
+            # for item in reslol:
+            #     print (item)
+            #     print ("       =item=")
+            # print ("reslmao end")
+            # print ("")
+            if len(reslol) > 0:
+                re_res.extend(reslol)
         
         
         #re_res is now [string]
+        single_w_cnt = 0
+        double_w_cnt = 0
         for text in re_res:
             text_arr = text.split(" ")
+            # print ("text is", text)
             for i in range(len(text_arr)):
+                single_w_cnt += 1
                 single_word = text_arr[i].lower()
                 add_to_dct(single_word, self.w_dct_single)
+                # if single_word == "improve":
+                #     print ("improve text is", text)
+
                 if i < len(text_arr) - 1:
+                    double_w_cnt += 1
                     double_word = " ".join( text_arr[i:i+2] ).lower()
                     add_to_dct(double_word, self.w_dict_double)
                 if i < len(text_arr) - 2:
@@ -116,7 +140,7 @@ class GoogleCrawlerPro():
                     quad_word = " ".join( text_arr[i:i+4] ).lower()
                     add_to_dct(quad_word, self.w_dict_quadle)
                 
-
+        
         return {"single_dict":self.w_dct_single, "double_dict":self.w_dict_double}  
 
     
@@ -127,15 +151,20 @@ class GoogleCrawlerPro():
         url_arr = []
         
         #testing parsing 100 website html success
-        p_arr = response.css('p').getall()
-        h1_arr = response.css('h1').getall()
-        h3_arr = response.css('h3').getall()
-        h4_arr = response.css('h4').getall()
+        # p_arr = response.css('p').getall()
+        # h1_arr = response.css('h1').getall()
+        # h3_arr = response.css('h3').getall()
+        # h4_arr = response.css('h4').getall()
+        # div_arr = response.css('div').getall()
         
-        self.handle_data(p_arr)
-        self.handle_data(h1_arr)
-        self.handle_data(h3_arr)
-        self.handle_data(h4_arr)
+        # self.handle_data(p_arr)
+        # self.handle_data(h1_arr)
+        # self.handle_data(h3_arr)
+        # self.handle_data(h4_arr)
+        # self.handle_data(div_arr)
+
+        html_lol = response.text
+        self.handle_data([html_lol])
 
         return []
 
@@ -146,6 +175,7 @@ class GoogleCrawlerPro():
         return sorted(tuple_arr, key=lambda x:x[1], reverse=True)
 
     async def output_result(self, begin):
+        #begin = datetime.datetime.now() obbject
         # print ("wait_and_output_resul called")
         
         single_res = self.parse_res_dict(self.w_dct_single)
@@ -155,10 +185,10 @@ class GoogleCrawlerPro():
         print ("result is here boi")
         print (" ")
         print (" single words: ")
-        print (single_res[100:150])
+        print (single_res[:100])
         print ("")
         print ("double words: ")
-        print (double_res[:300])
+        print (double_res[:100])
         print ("")
         print ("triple words: ")
         print (triple_res[:300])
@@ -175,31 +205,30 @@ class GoogleCrawlerPro():
     
 
 
-    def execute_step1(self, keyword_query):
+    def execute_step1(self, keyword_arr):
 
         url_arr = []
         
         urls = [
-            "https://www.google.com/search?q=%s&num=100" %(keyword_query)
+           
             # , "https://www.google.com/search?q=%s&num=100&start=100" %(keyword_query)
+            # , "https://www.google.com/search?q=%s&num=100" %("kinh+te")
         ]
+
+        for keyword in keyword_arr:
+            urls.append( "https://www.google.com/search?q=%s&num=100" %(keyword) )
         
         for url in urls:
             # Perform the request
             request = urllib.request.Request(url)
-
             # Set a normal User Agent header, otherwise Google will block the request.
             request.add_header('User-Agent', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36')
             raw_response = urllib.request.urlopen(request).read()
 
             # Read the repsonse as a utf-8 string
             html = raw_response.decode("utf-8")
-
-
-
             cnt = 0
             regexxx = re.findall(r"href=\"(.*?)\"", html)
-
             for line in regexxx:   
                 if line[:4]=="http":
                     # print ("line length [:4]==http is: ", len(line) )
@@ -212,8 +241,9 @@ class GoogleCrawlerPro():
     
 
     async def execute_step2(self):
+        print ("step2_executed", len(self.web_scrape_urls))
         #crawl the google search result urls received in step 1
-        print ("execute_step_2")
+        
 
         process = CrawlerProcess()
         process.crawl(SpiderScraperThree, urls=self.web_scrape_urls, parse_func = self.parse_scrapy_response )
@@ -221,10 +251,11 @@ class GoogleCrawlerPro():
         return 0
 
 
-    async def crawl_keyword(self, keyword_query):
+    async def crawl_keywords(self, keyword_arr):
+        self.reset_data()
         begin = datetime.datetime.now()
         self.web_scrape_urls = []
-        self.execute_step1(keyword_query)
+        self.execute_step1(keyword_arr)
         
         # print ("webscrape urls: ", web_scrape_urls[:1])
         task1 = asyncio.create_task(
@@ -242,13 +273,38 @@ class GoogleCrawlerPro():
 
         # await asyncio.sleep(5)
         
-    
-async def main():
+
+async def test1():
     crawler_pro = GoogleCrawlerPro()
+    crawler_pro.web_scrape_urls = ["https://stackoverflow.com/questions/29269370/how-to-properly-create-and-run-concurrent-tasks-using-pythons-asyncio-module"]
+
+    task1 = asyncio.create_task(
+            crawler_pro.execute_step2()
+        )
+        
+    # task2 = asyncio.create_task(
+    #         crawler_pro.output_result(datetime.datetime.now())
+    #     )
+
+    await task1
+    # await task2
     
 
-    await crawler_pro.crawl_keyword("nha+dat+facebook") 
+async def main():
+    
+    crawler_pro = GoogleCrawlerPro()
+    keyword_arr = []
+    s = ""
+    while s != "go":
+        print ("enter a keyword, or go to start crawling")
+        s = input()
+        word = "+".join( s.split(" ") )
+        keyword_arr.append(word)
+    
+    await crawler_pro.crawl_keywords(keyword_arr) 
     
     # print ("time benchmark: ", diff.total_seconds())
 
-asyncio.run(main())
+
+
+asyncio.run( main() )
