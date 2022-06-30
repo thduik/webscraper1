@@ -2,21 +2,34 @@ import re
 
 import urllib.request
 
+
+
 web_scrape_urls = []  #append urls to here lmao
-w_dct_single = {}
-w_dict_double = {}
-w_dict_triple = {}
-w_dict_quadle = {}
-
-def add_to_dct(word, dct):
-    if word in dct:
-        dct[word] += 1
-    else:
-        dct[word] = 1
 
 
 
-def replace_xa0_text_arr(text_arr):
+class MyHtmlParser:
+    w_dct_single = {}
+    w_dict_double = {}
+    w_dict_triple = {}
+    w_dict_quadle = {}
+
+    def parse_res_dict(self, w_dct):
+        
+        tuple_arr = [] #[(word, count)]
+        for w in w_dct:
+            tuple_arr.append((w,w_dct[w]))
+        return sorted(tuple_arr, key=lambda x:x[1], reverse=True)
+
+    def add_to_dct(self, word, dct):
+        if word in dct:
+            dct[word] += 1
+        else:
+            dct[word] = 1
+
+
+
+    def replace_xa0_text_arr(self, text_arr):
         res = []
         for text7 in text_arr:
             text_arr = re.sub("\\xa0", " ", text7)
@@ -24,22 +37,36 @@ def replace_xa0_text_arr(text_arr):
         return res
 
 
-def parse_text_1(text):
-    re_res = [] #[string]
-    
-    re_arr = re.findall(r">(.*?)<", text)
-    for reslol in re_arr:
-        if len(reslol) > 0:
-            re_res.append(reslol)
-    return re_res #[string]
+    def parse_text_1(self, text):
+        re_res = [] #[string]
+        # print ("parse_text_1 text is: ", len(text) )
+        re_arr = re.findall(r">(.*?)<", text)
+        for reslol in re_arr:
+            if len(reslol) > 0:
+                re_res.append(reslol)
+        return re_res #[string]
 
-def handle_data(text_arr):
+    def populate_res_dict(self, text_arr):
+        for i in range(len(text_arr)):
+            single_word = text_arr[i].lower()
+            self.add_to_dct(single_word, self.w_dct_single)     
+            if i < len(text_arr) - 1:
+                double_word = " ".join( text_arr[i:i+2] ).lower()
+                self.add_to_dct(double_word, self.w_dict_double)
+            if i < len(text_arr) - 2:
+                triple_word = " ".join( text_arr[i:i+3] ).lower()
+                self.add_to_dct(triple_word, self.w_dict_triple)
+            if i < len(text_arr) - 3:
+                quad_word = " ".join( text_arr[i:i+4] ).lower()
+                self.add_to_dct(quad_word, self.w_dict_quadle)
 
-    #text_arr = [string]
-    re_res = []
-    for text5 in text_arr:
-        parse_res = parse_text_1(text5) #[tring]
-        reslmao = replace_xa0_text_arr(parse_res) #[string]
+    def handle_data(self, text_html):
+
+        #text_arr = [string]
+        re_res = []
+        
+        parse_res = self.parse_text_1(text_html) #[tring]
+        reslmao = self.replace_xa0_text_arr(parse_res) #[string]
         reslol = []
         for s in reslmao:
             reslol.extend(s.split(" "))
@@ -52,49 +79,43 @@ def handle_data(text_arr):
         # print ("")
         if len(reslol) > 0:
             re_res.extend(reslol)
-    
-    print ("re_res length: ", len(re_res))
-    
-    #re_res is now [string]
-    single_w_cnt = 0
-    double_w_cnt = 0
-    for text in re_res:
-        text_arr = text.split(" ")
+        
+        # print ("re_res length: ", len(re_res))
+        self.populate_res_dict(re_res)
+        #re_res is now [string]
+        
+        
+        
         # print ("text is", text)
-        for i in range(len(text_arr)):
-            single_w_cnt += 1
-            single_word = text_arr[i].lower()
-            add_to_dct(single_word, w_dct_single)
-            # if single_word == "improve":
-            #     print ("improve text is", text)
-            if i < len(text_arr) - 1:
-                double_w_cnt += 1
-                double_word = " ".join( text_arr[i:i+2] ).lower()
-                add_to_dct(double_word, w_dict_double)
-            if i < len(text_arr) - 2:
-                triple_word = " ".join( text_arr[i:i+3] ).lower()
-                add_to_dct(triple_word, w_dict_triple)
-            if i < len(text_arr) - 3:
-                quad_word = " ".join( text_arr[i:i+4] ).lower()
-                add_to_dct(quad_word, w_dict_quadle)
-            
-    
-    return {}
-    
+        
+                
+        
+        return {}
+
+    def return_data(self):
+        #return the res_dicts' current state
+        return {
+            "single_dict":self.w_dct_single,
+            "double_dict":self.w_dict_double,
+            "triple_dict":self.w_dict_triple,
+            "quad_dict":self.w_dict_quadle
+        }
+
 webscrape_urls = []
 
-def execute_step1():
-
+def execute_step1_test():
     url_arr = []
     
     urls = [
-       
+    
         # , "https://www.google.com/search?q=%s&num=100&start=100" %(keyword_query)
-       "https://stackoverflow.com/questions/29269370/how-to-properly-create-and-run-concurrent-tasks-using-pythons-asyncio-module",
+    "https://stackoverflow.com/questions/29269370/how-to-properly-create-and-run-concurrent-tasks-using-pythons-asyncio-module",
     ]
     
     
     
+    
+
     # Perform the request
     request = urllib.request.Request(urls[0])
     # Set a normal User Agent header, otherwise Google will block the request.
@@ -103,8 +124,20 @@ def execute_step1():
     # Read the repsonse as a utf-8 string
     html = raw_response.decode("utf-8")
     
-    handle_data(html)
+    my_parser = MyHtmlParser()
+    my_parser.handle_data(html)
+    res_dct = my_parser.return_data()
+
+    
+    # print ("")
+    # print ("single_dict")
+    # res_arr_single = my_parser.parse_res_dict(res_dct["single_dict"])
+    # print (res_arr_single[:100])
+    # print ("double_dict")
+    # res_arr_double = my_parser.parse_res_dict(res_dct["double_dict"])
+    # print (res_arr_double[:100])
+    # print ("")
 
 
 
-execute_step1()
+
